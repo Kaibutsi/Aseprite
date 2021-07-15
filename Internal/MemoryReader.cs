@@ -7,6 +7,8 @@ namespace Aseprite
         byte*      ptr;
         public int Position;
 
+        public byte* Current => ptr + Position;
+
         public MemoryReader(void* address)
         {
             ptr      = (byte*) address;

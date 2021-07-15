@@ -7,11 +7,13 @@ using System.Runtime.CompilerServices;
 
 namespace Aseprite
 {
-    public unsafe class Aseprite
+
+    public unsafe class Aseprite : IDisposable
     {
         public static int      BufferSize           = 1024 * 1024 * 4;
         public static string[] IgnoredLayerNames    = Array.Empty<string>();
         public static bool     ParseInvisibleLayers = false;
+        public static string   IgnorePrefix         = "_";
 
         public Tag[]       Tags   { get; private set; }
         public Frame[]     Frames { get; private set; }
@@ -19,11 +21,10 @@ namespace Aseprite
 
         public int Width, Height;
 
-        byte[] Buffer;
-        int    Position;
+        internal byte[] Buffer;
+        int             Position;
 
-        Frame         CurrentFrame;
-        DeflateStream Deflate;
+        Frame CurrentFrame;
 
         public Aseprite(Span<byte> input)
         {
@@ -31,14 +32,13 @@ namespace Aseprite
             Layers = new List<Layer>(32);
 
             var reader = new MemoryReader(Unsafe.AsPointer(ref input[0]));
-
-            fixed (byte* ptr = &input.GetPinnableReference())
-                Deflate = new DeflateStream(new UnmanagedMemoryStream(ptr, input.Length), CompressionMode.Decompress, true);
-
             ProcessHeader(ref reader);
+        }
 
-            Deflate.BaseStream.Dispose();
-            Deflate.Dispose();
+        public void Dispose()
+        {
+            ArrayPool<byte>.Shared.Return(Buffer);
+            Buffer = null;
         }
 
         void ProcessHeader(ref MemoryReader reader)
@@ -50,7 +50,7 @@ namespace Aseprite
 
             Frames = new Frame[header.Frames];
             for (var i = 0; i < Frames.Length; i++)
-                Frames[i] = new Frame {Root = this};
+                Frames[i] = new() {Index = i};
 
             for (var i = 0; i < header.Frames; i++)
             {
@@ -84,9 +84,10 @@ namespace Aseprite
             {
                 Name    = reader.ReadUTF8(),
                 Index   = (ushort) Layers.Count,
-                Opacity = layer.Opacity,
+                Opacity = layer.Opacity / 255f,
                 Visible = layer.Flags.HasFlag(LayerFlags.Visible),
                 Blend   = layer.Blend,
+                Root    = this
             };
             result.Disabled = !result.ShouldParse;
             Layers.Add(result);
@@ -129,22 +130,23 @@ namespace Aseprite
                 var (width, height) = reader.Read<(ushort, ushort)>();
 
                 reader.Read<ushort>();
-                Deflate.BaseStream.Position = reader.Position;
 
                 var result = new Cell
                 {
-                    Width   = width,
-                    Height  = height,
                     Start   = Position,
-                    Opacity = cel.Opacity / 255f,
                     Layer   = Layers[cel.Layer],
                     X       = cel.X,
-                    Y       = cel.Y
+                    Y       = cel.Y,
+                    Width   = width,
+                    Height  = height,
+                    Opacity = cel.Opacity / 255f
                 };
 
                 if (!result.Layer.Disabled)
                 {
-                    Deflate.Read(Buffer.AsSpan(result.Start, result.Length));
+                    using var deflate = new DeflateStream(new UnmanagedMemoryStream(reader.Current, result.Length), CompressionMode.Decompress, false);
+                    deflate.Read(Buffer.AsSpan(result.Start, result.Length));
+
                     CurrentFrame.Add(result);
                     Position += result.Length;
                 }
@@ -153,20 +155,20 @@ namespace Aseprite
             if (cel.Type == CelType.Linked)
             {
                 var position = reader.Read<ushort>();
-                var source   = Frames[position].LastCell;
+                var layer    = Layers[cel.Layer];
 
-                if (Layers[cel.Layer].Disabled) return;
+                if (layer.Disabled) return;
+                var source = Frames[position].Cells[CurrentFrame.Cells.Count];
 
                 CurrentFrame.Add(new Cell
                 {
-                    Layer   = Layers[cel.Layer],
-                    Opacity = source.Opacity,
+                    Start   = source.Start,
+                    Layer   = layer,
                     X       = cel.X,
                     Y       = cel.Y,
                     Width   = source.Width,
                     Height  = source.Height,
-
-                    Start = source.Start
+                    Opacity = cel.Opacity / 255f
                 });
             }
         }
