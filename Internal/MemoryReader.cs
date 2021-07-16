@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Aseprite
+namespace Ase
 {
     unsafe ref struct MemoryReader
     {

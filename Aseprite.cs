@@ -5,9 +5,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 
-namespace Aseprite
+namespace Ase
 {
-
     public unsafe class Aseprite : IDisposable
     {
         public static int      BufferSize           = 1024 * 1024 * 4;

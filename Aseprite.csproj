@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Aseprite</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.0.3</Version>
+    <Version>0.0.4</Version>
     <Authors>Kaibutsu</Authors>
     <Product>Aseprite</Product>
     <Company>SquadnMog</Company>

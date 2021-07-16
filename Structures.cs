@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Aseprite
+namespace Ase
 {
     public enum AnimationDirection : byte
     {

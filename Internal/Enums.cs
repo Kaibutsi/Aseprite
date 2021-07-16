@@ -1,4 +1,4 @@
-﻿namespace Aseprite
+﻿namespace Ase
 {
     enum LayerBlendMode : ushort
     {
