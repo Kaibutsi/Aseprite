@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Aseprite
 {
@@ -27,7 +28,7 @@ namespace Aseprite
 
         public int Width => Frames.Length == 0 ? 0 : Frames[0].Root.Width * Frames.Length;
 
-        public void Render(Span<Color> buffer, int stride)
+        public void Render<T>(Span<T> buffer, int stride) where T : unmanaged
         {
             foreach (var frame in Frames)
             {
@@ -80,7 +81,7 @@ namespace Aseprite
 
         public List<Cell> Cells { get; } = new(16);
 
-        public void Render(Span<Color> buffer, int stride)
+        public void Render<T>(Span<T> buffer, int stride) where T : unmanaged
         {
             foreach (var cell in Cells.OrderBy(a => a.Layer.Index)) cell.Render(buffer, stride);
         }
@@ -112,12 +113,17 @@ namespace Aseprite
         public int Length => Width * Height * 4;
 
         // if offset is false then the rendering will start at 0, 0
-        public unsafe void Render(Span<Color> buffer, int stride, bool offset = true)
+        public unsafe void Render<T>(Span<T> buffer, int stride, bool offset = true) where T : unmanaged
         {
+            if (sizeof(T) != 4)
+                throw new Exception($"Aseprite Cell.Render<T>(): The length of {typeof(T)} is not 4 bytes");
+
             fixed (byte* ptr = Layer.Root.Buffer)
             {
+                var off = offset ? (X + Y * stride) : 0;
+
                 var source = new Span<Color>(ptr, Layer.Root.Buffer.Length / 4);
-                var target = offset ? buffer[(X + Y * stride)..] : buffer[..];
+                var target = MemoryMarshal.Cast<T, Color>(buffer)[off..];
                 var data   = source.Slice(Start / 4, Width * Height);
 
                 var position = 0;
