@@ -6,10 +6,12 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Aseprite</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Authors>Kaibutsu</Authors>
     <Product>Aseprite</Product>
     <Company>SquadnMog</Company>
+    <RepositoryUrl>https://github.com/Kaibutsi/Aseprite</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
 </Project>
